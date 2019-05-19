@@ -14,6 +14,7 @@ namespace Shortify
 {
     public class Startup
     {
+        private readonly string CustomCorsPolicy = "ShortifyAllowSpecificOrigins";
         public Startup(IConfiguration configuration)
         {
             Configuration = configuration;
@@ -24,6 +25,20 @@ namespace Shortify
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
+            services.AddCors(options =>
+            {
+                options.AddPolicy(CustomCorsPolicy,
+                builder =>
+                {
+                    builder.WithOrigins("http://localhost:3000",
+                                        "https://my.shortify.link",
+                                        "https://www.shortify.link",
+                                        "https://shortify.link")
+                                       .AllowAnyHeader()
+                                       .AllowAnyMethod();
+                });
+            });
+
             services.AddOptions();
             services.AddMemoryCache();
             services.Configure<IpRateLimitOptions>(Configuration.GetSection("IpRateLimiting"));
@@ -66,7 +81,7 @@ namespace Shortify
                 ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
             });
 
-
+            app.UseCors(CustomCorsPolicy);
             app.UseHttpsRedirection();
             app.UseMvc();
         }
