@@ -13,5 +13,7 @@ namespace Shortify.Models
         public string LongURL { get; set; }
         public string ShortURL { get; set; }
         public DateTime Created { get; set; }
+
+        public uint TimesAccessed { get; set; } = 0;
     }
 }

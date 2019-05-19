@@ -13,27 +13,17 @@ namespace Shortify
 {
     public class Program
     {
-        static void TestStuff()
-        {
-            var tree = new WordTrie<string>("root");
-            tree.AddChild("asd");
-            tree.AddChild("dasd");
-            var a = tree.Flatten();
-            foreach (var x in a)
-            {
-                Console.WriteLine(x);
-            }
-
-        }
 
         public static void Main(string[] args)
         {
-            TestStuff();
             CreateWebHostBuilder(args).Build().Run();
         }
 
         public static IWebHostBuilder CreateWebHostBuilder(string[] args) =>
             WebHost.CreateDefaultBuilder(args)
+                .UseUrls("http://0.0.0.0:5000")
+                .CaptureStartupErrors(true)
+                .UseSetting("detailedErrors", "true")
                 .ConfigureLogging(config =>
                 {
                     config.ClearProviders();

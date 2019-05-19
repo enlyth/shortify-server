@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Shortify.Models;
+using Shortify.Library;
 
 namespace Shortify.Controllers
 {
@@ -12,30 +13,34 @@ namespace Shortify.Controllers
     [ApiController]
     public class URLController : ControllerBase
     {
-        private readonly URLContext _context;
+        private readonly URLContext Context;
+        private readonly string[] Reserved = { "api", "swagger" };
+
+        private async Task<URL> AddURLToDatabase(string shortUrlId, string normalizedLongUrl)
+        {
+            var newUrl = new URL
+            {
+                Created = DateTime.Now,
+                Identifier = shortUrlId,
+                LongURL = normalizedLongUrl,
+                ShortURL = $"shortify.link/{shortUrlId}"
+            };
+
+            await Context.AddAsync(newUrl);
+            await Context.SaveChangesAsync();
+
+            return newUrl;
+        }
 
         public URLController(URLContext context)
         {
-            _context = context;
-            if (_context.URLs.Count() == 0)
-            {
-                _context.URLs.Add(new URL
-                {
-                    Created = DateTime.Now,
-                    Identifier = "CountryDuck",
-                    LongURL = "https://google.com/",
-                    ShortURL = "shortify.link/CountryDuck"
-                }
-                );
-                _context.SaveChanges();
-            }
+            Context = context;
         }
 
-        // GET: api/URL
         [HttpGet("{identifier}", Name = "Get")]
-        public ActionResult<URL> GetLongURLByIdentifier(string identifier)
+        public async Task<IActionResult> GetLongURLByIdentifier(string identifier)
         {
-            var url = _context.URLs.Find(identifier);
+            var url = await Context.URLs.FindAsync(identifier);
 
             if (url == null)
             {
@@ -43,33 +48,59 @@ namespace Shortify.Controllers
             }
             else
             {
+                ++url.TimesAccessed;
+                await Context.SaveChangesAsync();
                 return Redirect(url.LongURL);
             }
         }
 
-        //// GET: api/URL/5
-        //[HttpGet("{id}", Name = "Get")]
-        //public string Get(int id)
-        //{
-        //    return "value";
-        //}
-
-        // POST: api/URL
-        [HttpPost]
-        public void Post([FromBody] string value)
+        [HttpPost("api/v1/new", Name = "New")]
+        public async Task<IActionResult> CreateURL([FromBody] CreateURLRequest request)
         {
-        }
+            try
+            {
+                string normalizedLongUrl = URLNormalizer.Normalize(request.URL);
 
-        // PUT: api/URL/5
-        [HttpPut("{id}")]
-        public void Put(int id, [FromBody] string value)
-        {
-        }
+                if (!string.IsNullOrEmpty(request.CustomPath))
+                {
+                    if (!Uri.IsWellFormedUriString(request.CustomPath, UriKind.RelativeOrAbsolute))
+                    {
+                        return BadRequest("Invalid custom URL");
+                    }
+                    var custom = await Context.URLs.FindAsync(request.CustomPath);
+                    if (custom != null || Reserved.Contains(request.CustomPath.ToLower()))
+                    {
+                        return BadRequest("URL identifier already exists");
+                    }
+                    else
+                    {
+                        var newCustomUrl = await AddURLToDatabase(request.CustomPath, normalizedLongUrl);
+                        return CreatedAtAction(nameof(CreateURL), newCustomUrl);
+                    }
+                }
 
-        // DELETE: api/ApiWithActions/5
-        [HttpDelete("{id}")]
-        public void Delete(int id)
-        {
+                var existingUrl = Context.URLs.FirstOrDefault(x => x.LongURL == normalizedLongUrl);
+                if (existingUrl != null)
+                {
+                    return Ok(existingUrl);
+                }
+
+                var random = new Random();
+                string shortUrlId;
+                do
+                {
+                    var randomId = random.Next();
+                    shortUrlId = URLShortener.Encode(randomId);
+                } while (Context.URLs.Find(shortUrlId) != null);
+
+                var newUrl = await AddURLToDatabase(shortUrlId, normalizedLongUrl);
+
+                return CreatedAtAction(nameof(CreateURL), newUrl);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
     }
 }

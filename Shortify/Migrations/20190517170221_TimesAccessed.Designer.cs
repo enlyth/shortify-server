@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Shortify.Models;
@@ -9,9 +10,10 @@ using Shortify.Models;
 namespace Shortify.Migrations
 {
     [DbContext(typeof(URLContext))]
-    partial class URLContextModelSnapshot : ModelSnapshot
+    [Migration("20190517170221_TimesAccessed")]
+    partial class TimesAccessed
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
