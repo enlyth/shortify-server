@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Shortify.Models;
 using Shortify.Library;
+using Microsoft.EntityFrameworkCore;
 
 namespace Shortify.Controllers
 {
@@ -63,7 +64,7 @@ namespace Shortify.Controllers
 
                 if (!string.IsNullOrEmpty(request.CustomPath))
                 {
-                    if (!Uri.IsWellFormedUriString(request.CustomPath, UriKind.RelativeOrAbsolute))
+                    if (!Uri.IsWellFormedUriString(request.CustomPath, UriKind.Relative))
                     {
                         return BadRequest("Invalid custom URL");
                     }
@@ -79,7 +80,7 @@ namespace Shortify.Controllers
                     }
                 }
 
-                var existingUrl = Context.URLs.FirstOrDefault(x => x.LongURL == normalizedLongUrl);
+                var existingUrl = await Context.URLs.FirstOrDefaultAsync(x => x.LongURL == normalizedLongUrl);
                 if (existingUrl != null)
                 {
                     return Ok(existingUrl);
@@ -91,7 +92,7 @@ namespace Shortify.Controllers
                 {
                     var randomId = random.Next();
                     shortUrlId = URLShortener.Encode(randomId);
-                } while (Context.URLs.Find(shortUrlId) != null);
+                } while (await Context.URLs.FindAsync(shortUrlId) != null);
 
                 var newUrl = await AddURLToDatabase(shortUrlId, normalizedLongUrl);
 
